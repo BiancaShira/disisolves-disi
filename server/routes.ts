@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { getStorage } from "./storage";
 import { insertQuestionSchema, insertAnswerSchema, insertVoteSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -8,6 +8,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all questions with filters
   app.get("/api/questions", async (req, res) => {
     try {
+      const storage = await getStorage();
       const {
         search,
         software,
@@ -35,6 +36,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get single question
   app.get("/api/questions/:id", async (req, res) => {
     try {
+      const storage = await getStorage();
       const id = parseInt(req.params.id);
       const question = await storage.getQuestion(id);
       
@@ -51,6 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new question
   app.post("/api/questions", async (req, res) => {
     try {
+      const storage = await getStorage();
       const validatedData = insertQuestionSchema.parse(req.body);
       const question = await storage.createQuestion(validatedData);
       res.status(201).json(question);
@@ -65,6 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get answers for a question
   app.get("/api/questions/:id/answers", async (req, res) => {
     try {
+      const storage = await getStorage();
       const questionId = parseInt(req.params.id);
       const answers = await storage.getAnswersByQuestionId(questionId);
       res.json(answers);
@@ -76,6 +80,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new answer
   app.post("/api/answers", async (req, res) => {
     try {
+      const storage = await getStorage();
       const validatedData = insertAnswerSchema.parse(req.body);
       const answer = await storage.createAnswer(validatedData);
       res.status(201).json(answer);
@@ -90,6 +95,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Accept answer
   app.patch("/api/answers/:id/accept", async (req, res) => {
     try {
+      const storage = await getStorage();
       const id = parseInt(req.params.id);
       const answer = await storage.updateAnswer(id, { isAccepted: true });
       
@@ -106,13 +112,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Vote on question or answer
   app.post("/api/votes", async (req, res) => {
     try {
+      const storage = await getStorage();
       const validatedData = insertVoteSchema.parse(req.body);
       
       // Check if vote already exists
       const existingVote = await storage.getVote(
         validatedData.userId,
-        validatedData.questionId,
-        validatedData.answerId
+        validatedData.questionId || undefined,
+        validatedData.answerId || undefined
       );
 
       if (existingVote) {
@@ -141,6 +148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get platform stats
   app.get("/api/stats", async (req, res) => {
     try {
+      const storage = await getStorage();
       const stats = await storage.getStats();
       res.json(stats);
     } catch (error) {
@@ -151,6 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Search suggestions
   app.get("/api/search/suggestions", async (req, res) => {
     try {
+      const storage = await getStorage();
       const { q } = req.query;
       
       if (!q || typeof q !== "string") {
@@ -158,10 +167,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const questions = await storage.getQuestions({ search: q as string, limit: 5 });
-      const suggestions = questions.map(q => ({
-        title: q.title,
-        software: q.software,
-        id: q.id,
+      const suggestions = questions.map(question => ({
+        title: question.title,
+        software: question.software,
+        id: question.id,
       }));
 
       // Add software suggestions
