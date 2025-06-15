@@ -16,10 +16,33 @@ export class Database {
   constructor(dbPath: string = "disisolves.db") {
     this.db = new sqlite3.Database(dbPath);
     
-    // Promisify database methods
-    this.dbRun = promisify(this.db.run.bind(this.db));
-    this.dbGet = promisify(this.db.get.bind(this.db));
-    this.dbAll = promisify(this.db.all.bind(this.db));
+    // Promisify database methods with proper binding
+    this.dbRun = (sql: string, params?: any[]) => {
+      return new Promise<sqlite3.RunResult>((resolve, reject) => {
+        this.db.run(sql, params || [], function(err) {
+          if (err) reject(err);
+          else resolve(this);
+        });
+      });
+    };
+    
+    this.dbGet = (sql: string, params?: any[]) => {
+      return new Promise<any>((resolve, reject) => {
+        this.db.get(sql, params || [], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+    };
+    
+    this.dbAll = (sql: string, params?: any[]) => {
+      return new Promise<any[]>((resolve, reject) => {
+        this.db.all(sql, params || [], (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        });
+      });
+    };
   }
 
   async initialize(): Promise<void> {
@@ -105,7 +128,7 @@ export class Database {
       "INSERT INTO users (username, password) VALUES (?, ?)",
       [user.username, user.password]
     );
-    return await this.getUser(result.lastID!) as User;
+    return await this.getUser(result.lastID) as User;
   }
 
   // Question methods
@@ -208,7 +231,7 @@ export class Database {
       JSON.stringify(question.tags)
     ]);
     
-    return await this.getQuestion(result.lastID!) as Question;
+    return await this.getQuestion(result.lastID) as Question;
   }
 
   async updateQuestion(id: number, updates: Partial<Question>): Promise<Question | undefined> {
@@ -258,7 +281,7 @@ export class Database {
       [answer.questionId]
     );
 
-    const createdAnswer = await this.dbGet("SELECT * FROM answers WHERE id = ?", [result.lastID!]);
+    const createdAnswer = await this.dbGet("SELECT * FROM answers WHERE id = ?", [result.lastID]);
     return {
       ...createdAnswer,
       isAccepted: Boolean(createdAnswer.isAccepted),
