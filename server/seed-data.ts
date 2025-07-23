@@ -1,8 +1,6 @@
-import { getStorage } from "./storage";
+import { storage } from "./storage";
 
 export async function seedDatabase() {
-  const storage = await getStorage();
-
   // Check if data already exists
   const existingQuestions = await storage.getQuestions({ limit: 1 });
   if (existingQuestions.length > 0) {
@@ -21,7 +19,7 @@ export async function seedDatabase() {
       operatingSystem: "Windows 11",
       softwareVersion: "Omniscan v6.2.1",
       priority: "high",
-      authorId: 1,
+      authorId: "1",
       authorName: "John Doe",
       tags: ["rfid", "windows-update", "driver-issue", "timeout"],
     },
@@ -96,7 +94,7 @@ export async function seedDatabase() {
             : question.id === 2
             ? "This looks like a network timeout issue combined with large transaction size.\n\nTry these steps:\n1. Increase the connection timeout in SoftTrac config (default is 30s, try 120s)\n2. Enable batch processing to break large syncs into smaller chunks\n3. Check if your SQL Server has sufficient memory allocated\n4. Consider running sync during off-peak hours\n\nAlso verify that no firewall rules are interfering with the database connection."
             : "The blank scan issue after power outage suggests a sensor calibration problem.\n\nRecalibration steps:\n1. Access the IBML diagnostic menu (Ctrl+Alt+D while scanner software is open)\n2. Run 'Full Sensor Calibration' - this takes about 10 minutes\n3. Clean all internal sensors with the provided cleaning kit\n4. Test with various document types\n\nIf the issue persists, there may be hardware damage from the power surge. Check if your UPS was functioning during the outage.",
-          authorId: 1,
+          authorId: "1",
           authorName: "John Doe"
         }
       ];
@@ -112,7 +110,7 @@ export async function seedDatabase() {
 
       // Add some votes to make the data more realistic
       await storage.createVote({
-        userId: 1,
+        userId: "1",
         questionId: question.id,
         type: "up"
       });

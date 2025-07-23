@@ -1,0 +1,2 @@
+This is the public folder for storing images and static assets.
+You can add images here and reference them in your application.

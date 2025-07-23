@@ -1,10 +1,12 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Bolt, Bell, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Bolt, Bell, User, Settings } from "lucide-react";
 
 export default function Header() {
   const [location] = useLocation();
+  const { user, isAdmin } = useAuth();
 
   const isActive = (path: string) => {
     if (path === "/" && location === "/") return true;
@@ -61,18 +63,38 @@ export default function Header() {
           
           {/* User Profile */}
           <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Bell className="text-text-secondary text-lg" />
-              <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                3
+            {/* Admin Access - Dynamic Access Only */}
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                className="text-purple-600 hover:text-purple-700"
+                onClick={() => window.location.href = "/admin"}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Admin
+              </Button>
+            )}
+            
+            <div className="flex items-center space-x-2">
+              {user?.profileImageUrl ? (
+                <img 
+                  src={user.profileImageUrl} 
+                  alt="Profile" 
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                  <User className="h-4 w-4 text-white" />
+                </div>
+              )}
+              <span className="hidden sm:block text-sm font-medium">
+                {user?.firstName || user?.email || "User"}
               </span>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">JD</span>
-              </div>
-              <span className="hidden sm:block text-sm font-medium">John Doe</span>
-            </div>
+            
+            <Button variant="outline" size="sm" asChild>
+              <a href="/api/logout">Sign Out</a>
+            </Button>
           </div>
         </div>
       </div>

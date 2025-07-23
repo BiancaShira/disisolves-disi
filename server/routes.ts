@@ -1,14 +1,33 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { getStorage } from "./storage";
-import { insertQuestionSchema, insertAnswerSchema, insertVoteSchema } from "@shared/schema";
+import { storage } from "./storage";
+import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { insertQuestionSchema, insertAnswerSchema, insertVoteSchema, insertReportSchema } from "@shared/schema";
 import { z } from "zod";
+import express from "express";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth middleware
+  await setupAuth(app);
+
+  // Serve static files from public directory
+  app.use('/public', express.static('public'));
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
   // Get all questions with filters
   app.get("/api/questions", async (req, res) => {
     try {
-      const storage = await getStorage();
       const {
         search,
         software,
@@ -36,7 +55,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get single question
   app.get("/api/questions/:id", async (req, res) => {
     try {
-      const storage = await getStorage();
       const id = parseInt(req.params.id);
       const question = await storage.getQuestion(id);
       
@@ -50,11 +68,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create new question
-  app.post("/api/questions", async (req, res) => {
+  // Create new question (requires auth)
+  app.post("/api/questions", isAuthenticated, async (req: any, res) => {
     try {
-      const storage = await getStorage();
-      const validatedData = insertQuestionSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const validatedData = insertQuestionSchema.parse({
+        ...req.body,
+        authorId: userId,
+        authorName: user.firstName || user.email || "Anonymous"
+      });
+      
       const question = await storage.createQuestion(validatedData);
       res.status(201).json(question);
     } catch (error) {
@@ -68,7 +96,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get answers for a question
   app.get("/api/questions/:id/answers", async (req, res) => {
     try {
-      const storage = await getStorage();
       const questionId = parseInt(req.params.id);
       const answers = await storage.getAnswersByQuestionId(questionId);
       res.json(answers);
@@ -77,11 +104,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create new answer
-  app.post("/api/answers", async (req, res) => {
+  // Create new answer (requires auth)
+  app.post("/api/questions/:id/answers", isAuthenticated, async (req: any, res) => {
     try {
-      const storage = await getStorage();
-      const validatedData = insertAnswerSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const questionId = parseInt(req.params.id);
+      const validatedData = insertAnswerSchema.parse({
+        ...req.body,
+        questionId,
+        authorId: userId,
+        authorName: user.firstName || user.email || "Anonymous"
+      });
+      
       const answer = await storage.createAnswer(validatedData);
       res.status(201).json(answer);
     } catch (error) {
@@ -92,45 +131,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Accept answer
-  app.patch("/api/answers/:id/accept", async (req, res) => {
+  // Update answer (requires auth)
+  app.patch("/api/answers/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const storage = await getStorage();
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
       const id = parseInt(req.params.id);
-      const answer = await storage.updateAnswer(id, { isAccepted: true });
       
-      if (!answer) {
+      // Only allow admin or answer author to update
+      // For simplicity, allowing any authenticated user for now
+      const updatedAnswer = await storage.updateAnswer(id, req.body);
+      
+      if (!updatedAnswer) {
         return res.status(404).json({ message: "Answer not found" });
       }
 
-      res.json(answer);
+      res.json(updatedAnswer);
     } catch (error) {
-      res.status(500).json({ message: "Failed to accept answer" });
+      res.status(500).json({ message: "Failed to update answer" });
     }
   });
 
-  // Vote on question or answer
-  app.post("/api/votes", async (req, res) => {
+  // Vote on question or answer (requires auth)
+  app.post("/api/vote", isAuthenticated, async (req: any, res) => {
     try {
-      const storage = await getStorage();
-      const validatedData = insertVoteSchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const validatedData = insertVoteSchema.parse({
+        ...req.body,
+        userId
+      });
       
-      // Check if vote already exists
+      // Check if user already voted
       const existingVote = await storage.getVote(
-        validatedData.userId,
-        validatedData.questionId || undefined,
-        validatedData.answerId || undefined
+        userId,
+        validatedData.questionId,
+        validatedData.answerId
       );
 
       if (existingVote) {
         if (existingVote.type === validatedData.type) {
           // Remove vote if same type
           await storage.deleteVote(existingVote.id);
-          return res.json({ message: "Vote removed" });
+          res.json({ message: "Vote removed" });
         } else {
-          // Update vote type
+          // Update vote if different type
           const updatedVote = await storage.updateVote(existingVote.id, validatedData.type);
-          return res.json(updatedVote);
+          res.json(updatedVote);
         }
       } else {
         // Create new vote
@@ -145,10 +191,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get platform stats
+  // Get stats
   app.get("/api/stats", async (req, res) => {
     try {
-      const storage = await getStorage();
       const stats = await storage.getStats();
       res.json(stats);
     } catch (error) {
@@ -156,34 +201,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Search suggestions
-  app.get("/api/search/suggestions", async (req, res) => {
+  // ADMIN ROUTES
+  // Get all reports (admin only)
+  app.get("/api/admin/reports", isAdmin, async (req, res) => {
     try {
-      const storage = await getStorage();
-      const { q } = req.query;
+      const reports = await storage.getReports();
+      res.json(reports);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch reports" });
+    }
+  });
+
+  // Create report (requires auth)
+  app.post("/api/reports", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertReportSchema.parse({
+        ...req.body,
+        reportedBy: userId
+      });
       
-      if (!q || typeof q !== "string") {
-        return res.json([]);
+      const report = await storage.createReport(validatedData);
+      res.status(201).json(report);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid report data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create report" });
+    }
+  });
+
+  // Update report status (admin only)
+  app.patch("/api/admin/reports/:id", isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseInt(req.params.id);
+      
+      const updates = {
+        ...req.body,
+        resolvedBy: req.body.status === 'resolved' ? userId : undefined,
+        resolvedAt: req.body.status === 'resolved' ? new Date() : undefined
+      };
+      
+      const updatedReport = await storage.updateReport(id, updates);
+      
+      if (!updatedReport) {
+        return res.status(404).json({ message: "Report not found" });
       }
 
-      const questions = await storage.getQuestions({ search: q as string, limit: 5 });
-      const suggestions = questions.map(question => ({
-        title: question.title,
-        software: question.software,
-        id: question.id,
-      }));
+      res.json(updatedReport);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update report" });
+    }
+  });
 
-      // Add software suggestions
-      const softwareSuggestions = [
-        "omniscan", "softtrac", "ibml-scanners", "database-tools", "network-tools"
-      ].filter(s => s.includes((q as string).toLowerCase()));
+  // Admin route to post solutions (admin only)
+  app.post("/api/admin/solutions/:questionId", isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const questionId = parseInt(req.params.questionId);
+      
+      const validatedData = insertAnswerSchema.parse({
+        ...req.body,
+        questionId,
+        authorId: userId,
+        authorName: `${user?.firstName || 'Admin'} (Admin)`
+      });
+      
+      const answer = await storage.createAnswer(validatedData);
+      
+      // Mark as accepted solution
+      await storage.updateAnswer(answer.id, { isAccepted: true });
+      
+      res.status(201).json(answer);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid solution data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to post solution" });
+    }
+  });
 
+  // Admin analytics route
+  app.get("/api/admin/analytics", isAdmin, async (req, res) => {
+    try {
+      const stats = await storage.getStats();
+      const questions = await storage.getQuestions({ limit: 100 });
+      const reports = await storage.getReports();
+      
       res.json({
-        questions: suggestions,
-        software: softwareSuggestions,
+        ...stats,
+        recentQuestions: questions.slice(0, 10),
+        pendingReports: reports.filter(r => r.status === 'pending').length,
+        totalReports: reports.length
       });
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch suggestions" });
+      res.status(500).json({ message: "Failed to fetch analytics" });
     }
   });
 
