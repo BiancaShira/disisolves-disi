@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { Bolt, Bell, User, Settings } from "lucide-react";
+import { Bolt, Bell, User } from "lucide-react";
 
 export default function Header() {
   const [location] = useLocation();
@@ -63,18 +63,6 @@ export default function Header() {
           
           {/* User Profile */}
           <div className="flex items-center space-x-4">
-            {/* Admin Access - Dynamic Access Only */}
-            {isAdmin && (
-              <Button
-                variant="ghost"
-                className="text-purple-600 hover:text-purple-700"
-                onClick={() => window.location.href = "/admin"}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Admin
-              </Button>
-            )}
-            
             <div className="flex items-center space-x-2">
               {user?.profileImageUrl ? (
                 <img 
