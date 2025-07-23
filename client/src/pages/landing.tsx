@@ -1,140 +1,201 @@
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { HelpCircle, Users, TrendingUp, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Bolt, TrendingUp, ArrowRight, Star, MessageSquare, Users } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Landing() {
+  // Fetch stats for the homepage
+  const { data: stats } = useQuery({
+    queryKey: ["/api/stats"],
+    retry: false,
+  });
+
+  // Fetch recent questions for the homepage
+  const { data: recentQuestions } = useQuery({
+    queryKey: ["/api/questions"],
+    retry: false,
+  });
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm dark:bg-gray-800/80">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <HelpCircle className="h-8 w-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Q&A Hub</h1>
+    <div className="min-h-screen bg-neutral-bg">
+      {/* Header for landing page */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <Bolt className="text-primary text-2xl mr-3" />
+              <h1 className="text-xl font-semibold text-text-primary">DisiSolves</h1>
+            </div>
+            <Button asChild>
+              <a href="/api/login">Sign In</a>
+            </Button>
           </div>
-          <Button asChild>
-            <a href="/api/login">Sign In</a>
-          </Button>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-16 text-center">
-        <h2 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-          Get answers to your
-          <span className="text-blue-600"> technical questions</span>
-        </h2>
-        <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
-          Connect with experts and the community to solve enterprise software issues, 
-          troubleshoot problems, and share knowledge.
-        </p>
-        <div className="flex gap-4 justify-center">
-          <Button size="lg" asChild>
-            <a href="/api/login">Get Started</a>
-          </Button>
-          <Button variant="outline" size="lg">
-            Browse Questions
-          </Button>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="container mx-auto px-4 py-16">
-        <div className="grid md:grid-cols-3 gap-8">
-          <Card>
-            <CardHeader>
-              <HelpCircle className="h-12 w-12 text-blue-600 mb-4" />
-              <CardTitle>Ask Questions</CardTitle>
-              <CardDescription>
-                Get help with technical issues from our community of experts
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-300">
-                Post detailed questions about enterprise software, hardware troubleshooting, 
-                and technical challenges.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <Users className="h-12 w-12 text-green-600 mb-4" />
-              <CardTitle>Expert Community</CardTitle>
-              <CardDescription>
-                Connect with experienced professionals and technical experts
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-300">
-                Learn from industry professionals with years of experience in 
-                enterprise software and systems.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <TrendingUp className="h-12 w-12 text-purple-600 mb-4" />
-              <CardTitle>Vote & Rank</CardTitle>
-              <CardDescription>
-                Quality answers rise to the top through community voting
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-300">
-                The best solutions get recognized and help others facing 
-                similar technical challenges.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="bg-gray-50 dark:bg-gray-800/50 py-16">
-        <div className="container mx-auto px-4">
-          <h3 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-12">
-            Join Our Growing Community
-          </h3>
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold text-blue-600 mb-2">1000+</div>
-              <div className="text-gray-600 dark:text-gray-300">Questions Answered</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-green-600 mb-2">500+</div>
-              <div className="text-gray-600 dark:text-gray-300">Active Users</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-purple-600 mb-2">95%</div>
-              <div className="text-gray-600 dark:text-gray-300">Resolution Rate</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-orange-600 mb-2">2.4h</div>
-              <div className="text-gray-600 dark:text-gray-300">Avg Response Time</div>
+      <section className="bg-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-text-primary sm:text-5xl md:text-6xl">
+              Solve Enterprise Software Issues
+            </h1>
+            <p className="mt-3 max-w-md mx-auto text-base text-text-secondary sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
+              Get expert help with Omniscan, SoftTrac, IBML scanners, and other enterprise software. 
+              Join our community of IT professionals solving real-world problems.
+            </p>
+            <div className="mt-5 max-w-md mx-auto sm:flex sm:justify-center md:mt-8">
+              <div className="rounded-md shadow">
+                <Button size="lg" asChild>
+                  <a href="/api/login">Get Started</a>
+                </Button>
+              </div>
+              <div className="mt-3 rounded-md shadow sm:mt-0 sm:ml-3">
+                <Button variant="outline" size="lg" asChild>
+                  <Link href="/questions">Browse Questions</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="container mx-auto px-4 py-16 text-center">
-        <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-          Ready to get started?
-        </h3>
-        <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-          Join thousands of professionals solving technical challenges together.
-        </p>
-        <Button size="lg" asChild>
-          <a href="/api/login">Sign In Now</a>
-        </Button>
+      {/* Stats Section */}
+      <section className="bg-gray-50 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <MessageSquare className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">Total Questions</dt>
+                      <dd className="text-lg font-medium text-gray-900">{stats?.totalQuestions || 0}</dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Star className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">Solved Questions</dt>
+                      <dd className="text-lg font-medium text-gray-900">{stats?.solvedQuestions || 0}</dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Users className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">Active Users</dt>
+                      <dd className="text-lg font-medium text-gray-900">{stats?.activeUsers || 0}</dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Recent Questions Section */}
+      <section className="bg-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h2 className="text-3xl font-extrabold text-gray-900">Recent Questions</h2>
+            <p className="mt-4 text-lg text-gray-500">
+              See what the community is working on
+            </p>
+          </div>
+          
+          <div className="mt-10">
+            <div className="space-y-6">
+              {recentQuestions?.slice(0, 5).map((question: any) => (
+                <div key={question.id} className="bg-gray-50 rounded-lg p-6 hover:bg-gray-100 transition-colors">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-medium text-gray-900 hover:text-primary">
+                        <Link href={`/questions/${question.id}`}>
+                          {question.title}
+                        </Link>
+                      </h3>
+                      <p className="mt-2 text-gray-600 line-clamp-2">
+                        {question.description}
+                      </p>
+                      <div className="mt-3 flex items-center space-x-4">
+                        <Badge variant="outline">{question.software}</Badge>
+                        <Badge variant="outline">{question.priority}</Badge>
+                        <span className="text-sm text-gray-500">
+                          by {question.authorName}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ml-6 flex flex-col items-end space-y-2">
+                      <div className="text-sm text-gray-500">
+                        {question.votes || 0} votes
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {question.answersCount || 0} answers
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-8 text-center">
+              <Button variant="outline" asChild>
+                <Link href="/questions">
+                  View All Questions <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="bg-primary">
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
+          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            <span className="block">Ready to get help?</span>
+            <span className="block text-blue-200">Join our community today.</span>
+          </h2>
+          <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
+            <div className="inline-flex rounded-md shadow">
+              <Button variant="secondary" size="lg" asChild>
+                <a href="/api/login">Sign Up Now</a>
+              </Button>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t bg-gray-50 dark:bg-gray-800/50">
-        <div className="container mx-auto px-4 py-8 text-center text-gray-600 dark:text-gray-300">
-          <p>&copy; 2025 Q&A Hub. All rights reserved.</p>
+      <footer className="bg-gray-50">
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-gray-500">
+            <p>&copy; 2025 DisiSolves. All rights reserved.</p>
+          </div>
         </div>
       </footer>
     </div>

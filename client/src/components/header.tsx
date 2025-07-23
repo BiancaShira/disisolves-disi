@@ -76,7 +76,7 @@ export default function Header() {
                 </div>
               )}
               <span className="hidden sm:block text-sm font-medium">
-                {user?.firstName || user?.email || "User"}
+                {(user as any)?.firstName || (user as any)?.email || "User"}
               </span>
             </div>
             
