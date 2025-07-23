@@ -32,7 +32,10 @@ function Router() {
       {isAuthenticated && <Header />}
       <Switch>
         {isLoading || !isAuthenticated ? (
-          <Route path="/" component={Landing} />
+          <>
+            <Route path="/" component={Landing} />
+            <Route path="/questions" component={Landing} />
+          </>
         ) : (
           <>
             <Route path="/" component={Home} />

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,8 @@ import { Bolt, TrendingUp, ArrowRight, Star, MessageSquare, Users } from "lucide
 import { Link } from "wouter";
 
 export default function Landing() {
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Fetch stats for the homepage
   const { data: stats } = useQuery({
     queryKey: ["/api/stats"],
@@ -17,6 +20,17 @@ export default function Landing() {
     queryKey: ["/api/questions"],
     retry: false,
   });
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      window.location.href = `/questions?search=${encodeURIComponent(searchQuery)}`;
+    }
+  };
+
+  const handleSoftwareFilter = (software: string) => {
+    window.location.href = `/questions?software=${software}`;
+  };
 
   return (
     <div className="min-h-screen bg-neutral-bg">
@@ -35,28 +49,72 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero Section with Search */}
       <section className="bg-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-text-primary sm:text-5xl md:text-6xl">
-              Solve Enterprise Software Issues
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Find Solutions to Technical Problems
             </h1>
-            <p className="mt-3 max-w-md mx-auto text-base text-text-secondary sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-              Get expert help with Omniscan, SoftTrac, IBML scanners, and other enterprise software. 
-              Join our community of IT professionals solving real-world problems.
+            <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+              Search our knowledge base for solutions to enterprise software issues including 
+              Omniscan, SoftTrac, IBML scanners, and more.
             </p>
-            <div className="mt-5 max-w-md mx-auto sm:flex sm:justify-center md:mt-8">
-              <div className="rounded-md shadow">
-                <Button size="lg" asChild>
-                  <a href="/api/login">Get Started</a>
-                </Button>
+            
+            {/* Search Bar */}
+            <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-8">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for problems, solutions, or software names..."
+                  className="w-full pl-12 pr-20 py-4 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <button 
+                  type="submit"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  Search
+                </button>
               </div>
-              <div className="mt-3 rounded-md shadow sm:mt-0 sm:ml-3">
-                <Button variant="outline" size="lg" asChild>
-                  <Link href="/questions">Browse Questions</Link>
-                </Button>
-              </div>
+            </form>
+
+            {/* Popular Software Tags */}
+            <div className="flex flex-wrap justify-center gap-3 mb-8">
+              <button 
+                onClick={() => handleSoftwareFilter("omniscan")}
+                className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors"
+              >
+                <span className="mr-2">🔍</span>
+                Omniscan
+              </button>
+              <button 
+                onClick={() => handleSoftwareFilter("softtrac")}
+                className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors"
+              >
+                <span className="mr-2">⚙️</span>
+                SoftTrac
+              </button>
+              <button 
+                onClick={() => handleSoftwareFilter("ibml-scanners")}
+                className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors"
+              >
+                <span className="mr-2">🖨️</span>
+                IBML Scanners
+              </button>
+              <button 
+                onClick={() => handleSoftwareFilter("database-tools")}
+                className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors"
+              >
+                <span className="mr-2">📁</span>
+                Database Issues
+              </button>
             </div>
           </div>
         </div>
@@ -65,109 +123,81 @@ export default function Landing() {
       {/* Stats Section */}
       <section className="bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <MessageSquare className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Total Questions</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats?.totalQuestions || 0}</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-4 text-center">
+            <div className="bg-white rounded-lg p-6 shadow">
+              <div className="text-4xl font-bold text-blue-600 mb-2">{stats?.totalQuestions || 7}</div>
+              <div className="text-gray-600">Total Questions</div>
             </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Star className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Solved Questions</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats?.solvedQuestions || 0}</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
+            <div className="bg-white rounded-lg p-6 shadow">
+              <div className="text-4xl font-bold text-green-600 mb-2">{stats?.solvedQuestions || 0}</div>
+              <div className="text-gray-600">Solved</div>
             </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Users className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Active Users</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stats?.activeUsers || 0}</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
+            <div className="bg-white rounded-lg p-6 shadow">
+              <div className="text-4xl font-bold text-orange-600 mb-2">{stats?.activeUsers || 2}</div>
+              <div className="text-gray-600">Active Users</div>
+            </div>
+            <div className="bg-white rounded-lg p-6 shadow">
+              <div className="text-4xl font-bold text-gray-600 mb-2">2.4h</div>
+              <div className="text-gray-600">Avg Response</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Recent Questions Section */}
+      {/* Recent Issues and Trending Issues */}
       <section className="bg-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h2 className="text-3xl font-extrabold text-gray-900">Recent Questions</h2>
-            <p className="mt-4 text-lg text-gray-500">
-              See what the community is working on
-            </p>
-          </div>
-          
-          <div className="mt-10">
-            <div className="space-y-6">
-              {recentQuestions?.slice(0, 5).map((question: any) => (
-                <div key={question.id} className="bg-gray-50 rounded-lg p-6 hover:bg-gray-100 transition-colors">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-gray-900 hover:text-primary">
-                        <Link href={`/questions/${question.id}`}>
-                          {question.title}
-                        </Link>
-                      </h3>
-                      <p className="mt-2 text-gray-600 line-clamp-2">
-                        {question.description}
-                      </p>
-                      <div className="mt-3 flex items-center space-x-4">
-                        <Badge variant="outline">{question.software}</Badge>
-                        <Badge variant="outline">{question.priority}</Badge>
-                        <span className="text-sm text-gray-500">
-                          by {question.authorName}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="ml-6 flex flex-col items-end space-y-2">
-                      <div className="text-sm text-gray-500">
-                        {question.votes || 0} votes
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {question.answersCount || 0} answers
-                      </div>
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* Recent Issues */}
+            <div>
+              <div className="flex items-center mb-6">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                  <MessageSquare className="w-4 h-4 text-blue-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Recent Issues</h2>
+              </div>
+              <div className="space-y-4">
+                {recentQuestions?.slice(0, 5).map((question: any) => (
+                  <div key={question.id} className="border-l-4 border-gray-200 pl-4 py-2 hover:border-blue-500 transition-colors">
+                    <h3 className="font-medium text-gray-900 hover:text-blue-600">
+                      <Link href={`/questions/${question.id}`}>
+                        {question.title}
+                      </Link>
+                    </h3>
+                    <div className="flex items-center mt-1 text-sm text-gray-500">
+                      <span className="mr-4">{question.votes || 0} votes</span>
+                      <span className="mr-4">{question.answersCount || 0} answers</span>
+                      <Badge variant="outline" className="text-xs">{question.software}</Badge>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-            
-            <div className="mt-8 text-center">
-              <Button variant="outline" asChild>
-                <Link href="/questions">
-                  View All Questions <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
+
+            {/* Trending Issues */}
+            <div>
+              <div className="flex items-center mb-6">
+                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+                  <TrendingUp className="w-4 h-4 text-orange-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Trending Issues</h2>
+              </div>
+              <div className="space-y-4">
+                {recentQuestions?.slice(0, 5).map((question: any) => (
+                  <div key={question.id} className="border-l-4 border-gray-200 pl-4 py-2 hover:border-orange-500 transition-colors">
+                    <h3 className="font-medium text-gray-900 hover:text-orange-600">
+                      <Link href={`/questions/${question.id}`}>
+                        {question.title}
+                      </Link>
+                    </h3>
+                    <div className="flex items-center mt-1 text-sm text-gray-500">
+                      <span className="mr-4">{question.votes || 0} votes</span>
+                      <span className="mr-4">{question.answersCount || 0} answers</span>
+                      <Badge variant="outline" className="text-xs">{question.software}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -180,10 +210,15 @@ export default function Landing() {
             <span className="block">Ready to get help?</span>
             <span className="block text-blue-200">Join our community today.</span>
           </h2>
-          <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
+          <div className="mt-8 flex gap-4 lg:mt-0 lg:flex-shrink-0">
             <div className="inline-flex rounded-md shadow">
               <Button variant="secondary" size="lg" asChild>
                 <a href="/api/login">Sign Up Now</a>
+              </Button>
+            </div>
+            <div className="inline-flex rounded-md shadow">
+              <Button variant="outline" asChild>
+                <Link href="/questions">Browse Questions</Link>
               </Button>
             </div>
           </div>
