@@ -1,31 +1,16 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { requireAuth, requireAdmin, requireSupervisorOrAdmin, requireAnyRole } from "./localAuth";
 import { insertQuestionSchema, insertAnswerSchema, insertVoteSchema, insertReportSchema } from "@shared/schema";
 import { z } from "zod";
 import express from "express";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
-
   // Serve static files from public directory
   app.use('/public', express.static('public'));
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
-
-  // Get all questions with filters
+  // Get all questions with filters (show only approved content to regular users)
   app.get("/api/questions", async (req, res) => {
     try {
       const {
@@ -44,6 +29,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sortBy: sortBy as string,
         limit: parseInt(limit as string),
         offset: parseInt(offset as string),
+        approvalStatus: 'approved' // Only show approved content to public
       });
 
       res.json(questions);
@@ -68,19 +54,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create new question (requires auth)
-  app.post("/api/questions", isAuthenticated, async (req: any, res) => {
+  // Create new question (requires auth - Users can only raise issues, Supervisors need approval)
+  app.post("/api/questions", requireAnyRole, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = req.user;
       if (!user) {
         return res.status(401).json({ message: "User not found" });
       }
 
       const validatedData = insertQuestionSchema.parse({
         ...req.body,
-        authorId: userId,
-        authorName: user.firstName || user.email || "Anonymous"
+        authorId: user.id,
+        authorName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || "Anonymous",
+        status: user.role === 'admin' ? 'approved' : (user.role === 'supervisor' ? 'pending' : 'approved') // Users can raise issues directly
       });
       
       const question = await storage.createQuestion(validatedData);
@@ -104,11 +90,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create new answer (requires auth)
-  app.post("/api/questions/:id/answers", isAuthenticated, async (req: any, res) => {
+  // Create new answer (requires supervisor or admin - users cannot answer)
+  app.post("/api/questions/:id/answers", requireSupervisorOrAdmin, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = req.user;
       if (!user) {
         return res.status(401).json({ message: "User not found" });
       }
@@ -117,8 +102,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertAnswerSchema.parse({
         ...req.body,
         questionId,
-        authorId: userId,
-        authorName: user.firstName || user.email || "Anonymous"
+        authorId: user.id,
+        authorName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || "Anonymous",
+        status: user.role === 'admin' ? 'approved' : 'pending'
       });
       
       const answer = await storage.createAnswer(validatedData);
@@ -131,11 +117,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update answer (requires auth)
-  app.patch("/api/answers/:id", isAuthenticated, async (req: any, res) => {
+  // Update answer (requires admin)
+  app.patch("/api/answers/:id", requireAdmin, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = req.user;
       const id = parseInt(req.params.id);
       
       // Only allow admin or answer author to update
@@ -152,10 +137,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Vote on question or answer (requires auth)
-  app.post("/api/vote", isAuthenticated, async (req: any, res) => {
+  // Vote on question or answer (only admin and supervisor can vote)
+  app.post("/api/vote", requireSupervisorOrAdmin, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertVoteSchema.parse({
         ...req.body,
         userId
@@ -203,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ADMIN ROUTES
   // Get all reports (admin only)
-  app.get("/api/admin/reports", isAdmin, async (req, res) => {
+  app.get("/api/admin/reports", requireAdmin, async (req, res) => {
     try {
       const reports = await storage.getReports();
       res.json(reports);
@@ -213,9 +198,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create report (requires auth)
-  app.post("/api/reports", isAuthenticated, async (req: any, res) => {
+  app.post("/api/reports", requireAnyRole, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertReportSchema.parse({
         ...req.body,
         reportedBy: userId
@@ -232,9 +217,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update report status (admin only)
-  app.patch("/api/admin/reports/:id", isAdmin, async (req: any, res) => {
+  app.patch("/api/admin/reports/:id", requireAdmin, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const id = parseInt(req.params.id);
       
       const updates = {
@@ -256,9 +241,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin route to post solutions (admin only)
-  app.post("/api/admin/solutions/:questionId", isAdmin, async (req: any, res) => {
+  app.post("/api/admin/solutions/:questionId", requireAdmin, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       const questionId = parseInt(req.params.questionId);
       
@@ -283,8 +268,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Get pending content for approval
+  app.get("/api/admin/pending", requireAdmin, async (req, res) => {
+    try {
+      const pendingQuestions = await storage.getQuestions({ approvalStatus: 'pending', limit: 100 });
+      const pendingAnswers = await storage.getAnswersByQuestionId(0); // Get all answers, then filter in code for now
+      res.json({ 
+        pendingQuestions,
+        pendingAnswers: [] // TODO: Implement pending answers filter
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch pending content" });
+    }
+  });
+
+  // Admin: Approve/reject questions
+  app.patch("/api/admin/questions/:id/approval", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { status } = req.body; // 'approved' or 'rejected'
+      const adminId = req.user.id;
+      
+      const updates = {
+        status,
+        approvedBy: status === 'approved' ? adminId : null,
+        approvedAt: status === 'approved' ? new Date() : null
+      };
+      
+      const updatedQuestion = await storage.updateQuestion(id, updates);
+      if (!updatedQuestion) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+      
+      res.json(updatedQuestion);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update question approval" });
+    }
+  });
+
+  // Admin: Approve/reject answers  
+  app.patch("/api/admin/answers/:id/approval", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { status } = req.body; // 'approved' or 'rejected'
+      const adminId = req.user.id;
+      
+      const updates = {
+        status,
+        approvedBy: status === 'approved' ? adminId : null,
+        approvedAt: status === 'approved' ? new Date() : null
+      };
+      
+      const updatedAnswer = await storage.updateAnswer(id, updates);
+      if (!updatedAnswer) {
+        return res.status(404).json({ message: "Answer not found" });
+      }
+      
+      res.json(updatedAnswer);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update answer approval" });
+    }
+  });
+
   // Admin analytics route
-  app.get("/api/admin/analytics", isAdmin, async (req, res) => {
+  app.get("/api/admin/analytics", requireAdmin, async (req, res) => {
     try {
       const stats = await storage.getStats();
       const questions = await storage.getQuestions({ limit: 100 });

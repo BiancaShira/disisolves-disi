@@ -18,14 +18,16 @@ export const sessions = pgTable("sessions", {
   expire: timestamp("expire").notNull(),
 });
 
-// Users table with admin role support
+// Users table with role-based access
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
   email: text("email").unique(),
+  password: text("password").notNull(), // For local authentication
   firstName: text("first_name"),
   lastName: text("last_name"),
   profileImageUrl: text("profile_image_url"),
-  isAdmin: boolean("is_admin").notNull().default(false),
+  role: text("role").notNull().default("user"), // 'admin', 'supervisor', 'user'
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -45,6 +47,9 @@ export const questions = pgTable("questions", {
   solved: boolean("solved").notNull().default(false),
   answersCount: integer("answers_count").notNull().default(0),
   imageUrl: text("image_url"),
+  status: text("status").notNull().default("approved"), // 'pending', 'approved', 'rejected'
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -56,6 +61,9 @@ export const answers = pgTable("answers", {
   authorName: text("author_name").notNull(),
   votes: integer("votes").notNull().default(0),
   isAccepted: boolean("is_accepted").notNull().default(false),
+  status: text("status").notNull().default("approved"), // 'pending', 'approved', 'rejected'
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

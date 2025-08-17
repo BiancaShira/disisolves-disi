@@ -21,7 +21,9 @@ import { eq, desc, asc, like, and, or, count, sql } from "drizzle-orm";
 export interface IStorage {
   // User methods
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  createUser(user: Omit<UpsertUser, 'id'> & { id: string }): Promise<User>;
 
   // Question methods
   getQuestions(filters?: {
@@ -31,6 +33,7 @@ export interface IStorage {
     sortBy?: string;
     limit?: number;
     offset?: number;
+    approvalStatus?: string;
   }): Promise<Question[]>;
   getQuestion(id: number): Promise<Question | undefined>;
   createQuestion(question: InsertQuestion): Promise<Question>;
@@ -68,6 +71,16 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(userData: Omit<UpsertUser, 'id'> & { id: string }): Promise<User> {
+    const [user] = await db.insert(users).values(userData).returning();
+    return user;
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -91,6 +104,7 @@ export class DatabaseStorage implements IStorage {
     sortBy?: string;
     limit?: number;
     offset?: number;
+    approvalStatus?: string;
   }): Promise<Question[]> {
     let query = db.select().from(questions);
     const conditions = [];
@@ -120,6 +134,10 @@ export class DatabaseStorage implements IStorage {
           conditions.push(eq(questions.answersCount, 0));
           break;
       }
+    }
+
+    if (filters?.approvalStatus) {
+      conditions.push(eq(questions.status, filters.approvalStatus));
     }
 
     if (conditions.length > 0) {
