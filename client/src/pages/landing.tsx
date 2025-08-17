@@ -43,7 +43,7 @@ export default function Landing() {
               <h1 className="text-xl font-semibold text-text-primary">DisiSolves</h1>
             </div>
             <Button asChild>
-              <a href="/api/login">Sign In</a>
+              <Link href="/login">Sign In</Link>
             </Button>
           </div>
         </div>

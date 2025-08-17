@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
 import Questions from "@/pages/questions";
 import AskQuestion from "@/pages/ask-question";
 import QuestionDetail from "@/pages/question-detail";
@@ -34,6 +35,7 @@ function Router() {
         {isLoading || !isAuthenticated ? (
           <>
             <Route path="/" component={Landing} />
+            <Route path="/login" component={Login} />
             <Route path="/questions" component={Landing} />
           </>
         ) : (
